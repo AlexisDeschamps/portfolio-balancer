@@ -11,13 +11,6 @@ schoolsStore.onChange(getSchoolsCallback);
 
 var SchoolsList = require("./components/SchoolsList.jsx");
 
-//var updateQuotes = function(data){
-//		for (ticker in quote) {
-//		var symbol = quote[ticker];
-//		document.write('<div>Price of ' + ticker + ' is ' + symbol['Last'] + '</div>');
-//		}
-//}
-
 function render(){
     ReactDOM.render(<SchoolsList schools={_schools} />, document.getElementById("container"));    
 }
