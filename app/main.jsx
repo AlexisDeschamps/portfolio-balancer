@@ -9,16 +9,23 @@ var getSchoolsCallback = function(schools){
 };
 schoolsStore.onChange(getSchoolsCallback);
 
-var modelsStore = require("./stores/modelsStore");
 var SchoolsList = require("./components/SchoolsList.jsx");
 
+//var updateQuotes = function(data){
+//		for (ticker in quote) {
+//		var symbol = quote[ticker];
+//		document.write('<div>Price of ' + ticker + ' is ' + symbol['Last'] + '</div>');
+//		}
+//}
+
+function render(){
+    ReactDOM.render(<SchoolsList schools={_schools} />, document.getElementById("container"));    
+}
+
+var modelsStore = require("./stores/modelsStore");
 var _models = [];
 var getModelsCallback = function(models){
     _models = models;
     render();
 };
 modelsStore.onChange(getModelsCallback);
-
-function render(){
-    ReactDOM.render(<SchoolsList schools={_schools} />, document.getElementById("container"));    
-}
