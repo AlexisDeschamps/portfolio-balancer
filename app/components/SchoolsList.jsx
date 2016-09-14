@@ -6,23 +6,59 @@ var SchoolInfo = require("./SchoolInfo.jsx")
 var AddSchool = require("./AddSchool.jsx");
 var PortfolioModels = require("./PortfolioModels.jsx");
 var schoolService = require("../services/schoolService");
-var selectedId;
+var ReactDOM = require('react-dom');
+var NotificationSystem = require('react-notification-system');
 
+var selectedId;
 var modelPortfoliosNames = [];
 var tickerNames = [];
 var suggestedPercentages = [];
 var lastTradedPrices = [];
 var userUnits = [];
+var userUnitsForCalculations = [];
+
+var cashAmount = 0;
+var leftoverCash;
+var earnedCash;
+var generateStepsButtonClicked = false;
+
+var userEquityPerTicker = [];
+var userProportionsPerTicker = [];
+var ratioSuggestedVsUser = [];
+var purchaseOrder = [];
+var sellOrder = [];
+var lastAverageRatioSuggestedVsUser;
+var averageRatioSuggestedVsUser;
+var absoluteDifference;
+var lastAbsoluteDifference;
+var lastAbsoluteDifferenceSet = false;
+var stillUnbalancedAfterCashBalancing = false;
 
 module.exports = React.createClass({
 	getInitialState: function () {
 		return {
-			gotLastTradedPrices: 'false'
+			gotLastTradedPrices: false,
+			generateStepsClicked: false,
+			initalizedUserUnitsArray: false
 		};
 	},
 	onModelSelect: function(value) {
 		this.setState({value: value});
     },
+	onGenerateStepsClick: function() {
+		for (var i = 0; i < userUnits.length; i++) {
+			if (isNaN(userUnits[i]) || userUnits[i] < 0) {
+				this.refs.popUp._addNotification("Pleases insert a valid number of units for ticker " + tickerNames[i] + ".");
+				return;
+			} 
+		}
+		if (isNaN(cashAmount) || cashAmount < 0) {
+			this.refs.popUp._addNotification("Pleases insert a valid cash amount.");
+			return;
+		}
+		this.setState({generateStepsClicked: true});
+		generateStepsButtonClicked = true;
+	},
 	getLastTradedPrice: function(symbol) {
 		var url = 'http://query.yahooapis.com/v1/public/yql';
 			var data = encodeURIComponent("select * from yahoo.finance.quotes where symbol in ('" + symbol + "')");
@@ -55,10 +91,8 @@ module.exports = React.createClass({
 		if (selectedModelPortfolio == null) {
 			 return(
 				<div className="row">
-					<h4>Choose model portfolio: </h4>
-					<div className="col-md-5">
-						<Select onModelSelect= {this.onModelSelect}/>
-					</div>
+					<p>Choose model portfolio: </p>
+					<Select onModelSelect= {this.onModelSelect}/>
 				</div>				
 			)
 		}
@@ -67,40 +101,50 @@ module.exports = React.createClass({
 			//Find the ticker names
 			tickerNames = [];
 			var tickers = selectedModelPortfolio.tickers;
-			for (var i = 0; i < modelPortfolioData.length; i++) {
+			for (var i = 0; i < tickers.length; i++) {
 				tickerNames.push(tickers[i].title);
 			}
 			//Find the suggested percentages
 			suggestedPercentages = [];
-			for (var i = 0; i < modelPortfolioData.length; i++) {
+			for (var i = 0; i < tickers.length; i++) {
 				suggestedPercentages.push(tickers[i].percent);
 			}
 			// Find the last traded prices
 			promises = [];
-			for (var i = 0; i < modelPortfolioData.length; i++) {
+			for (var i = 0; i < tickers.length; i++) {
 				promises.push(this.getLastTradedPrice(tickers[i].title));
 			}
-			// Create asynchronous jquery calls, the component will re-render once the data has been acquired
-			$.when.apply($, promises).then(function() {
-				lastTradedPrices = [];
-				for (var i = 0; i < arguments.length; i++) {
-					lastTradedPrices.push(arguments[i].lastTradePrice);
+			// Create asynchronous jquery calls, the component will re-render once the data has been acquired if needed
+			if (this.state.gotLastTradedPrices == false) {
+				$.when.apply($, promises).then(function() {
+					lastTradedPrices = [];
+					for (var i = 0; i < arguments.length; i++) {
+						lastTradedPrices.push(parseFloat(arguments[i].lastTradePrice));
+					}
+					this.setState({gotLastTradedPrices: true});
+				}.bind(this));
+			}
+			// Initalize the user units array with the right amount of entries if needed
+			if (this.state.initalizedUserUnitsArray == false) {
+				userUnits = [];
+				for (var i = 0; i < tickers.length; i++) {
+					userUnits.push(0);
 				}
-				this.setState({gotLastTradedPrices: true});
-			}.bind(this));
-			// Initalize the user units array with the right amount of entries
-			userUnits = [];
-			for (var i = 0; i < modelPortfolioData.length; i++) {
-				userUnits.push('');
+				this.setState({initalizedUserUnitsArray: true});
 			}
 			return(
 			   <div className="row">
-					<h4>Choose model portfolio: </h4>
-					<div className="col-md-5">
+					<Notification ref={'popUp'}/>
+					<p>Choose model portfolio: </p>
 						<Select onModelSelect= {this.onModelSelect}/>
+						<Table/>
+					<div className="user-options">
+						<p>How much cash are you willing to invest?</p>
+						<UserInputText id= 'cashInputText'/>
+						<UserInputButton id= 'generateStepsButton' onGenerateStepsClick= {this.onGenerateStepsClick}/>
 					</div>
-					<div className="col-md-8">
-						<Table />
+					<div>
+						<BalancingSteps />
 					</div>
 			   </div>
 		    )
@@ -121,12 +165,15 @@ var Select = React.createClass({
 	this.props.onModelSelect(e.target.value);
   },
   render: function (props) {
+	 var style = {
+        display: "inline-block",
+      };
     var createItem = function (item, key) {
       return <option key={key} value={item.value}>{item.name}</option>;
     };
     return (
       <div>
-        <select onChange={this.handleChange} value={this.state.value}>
+        <select style={style} onChange={this.handleChange} value={this.state.value}>
           {this.state.options.map(createItem)}
         </select>
       </div>
@@ -137,8 +184,7 @@ var Select = React.createClass({
 var Table = React.createClass({
   render: function () {
     return (
-		<div className="col-md-8">
-			<table >
+			<table>
 				<tr>
 					<th>Ticker: </th>
 					<TickerNamesRow />
@@ -156,12 +202,6 @@ var Table = React.createClass({
 					<UserUnitsRow />
 				</tr>
 			</table>
-			<p>How much cash are you going to invest?</p>
-			<UserInputText id= 'cashInputText'/>
-			<p>Start selling to balance once cash has run out: </p>
-			<UserInputCheckbox id= 'sellInputCheckbox'/>
-			<UserInputButton id= 'generateStepsButton'/>
-        </div>
     );
   }
 });
@@ -212,7 +252,7 @@ var UserUnitsRow = React.createClass({
 	render: function () {
 		var userUnitsRow = [];
 		for (var i = 0; i < userUnits.length; i++) {
-				userUnitsRow.push(<td><UserInputText id = {'unitUserInput' + i}/></td>);
+				userUnitsRow.push(<td><UserInputText inputUnitsTextNumber = {i} /></td>);
 		}
 		return (
 			<div>
@@ -223,12 +263,22 @@ var UserUnitsRow = React.createClass({
 });
 
 var UserInputText = React.createClass({
-  getInitialState: function() {
+	getInitialState: function() {
     return {id: 'defaultId',
+			inputUnitsTextNumber: '-1',
 			value: '0'};
+  },
+   componentWillMount: function() {
+	this.setState({id: this.props.id, inputUnitsTextNumber: this.props.inputUnitsTextNumber});
   },
   handleChange: function(event) {
     this.setState({value: event.target.value});
+	if (this.state.id == 'cashInputText') {
+		cashAmount = parseFloat(event.target.value);
+	}
+	else {
+		userUnits[this.state.inputUnitsTextNumber] = parseInt(event.target.value);
+	}
   },
   render: function() {
     return (
@@ -247,33 +297,337 @@ var UserInputCheckbox = React.createClass({
 			value: '0'};
   },
   handleChange: function(event) {
-    this.setState({value: event.target.value});
+    this.setState({value: event.target.checked});
   },
   render: function() {
     return (
       <input
         type="checkbox"
         value={this.state.value}
-        onChange={this.handleChange}
+        onChange={this.props.onGenerateStepsClick}
       />
     );
   }
 });
 
 var UserInputButton = React.createClass({
-  getInitialState: function() {
-    return {id: 'defaultId',
-			value: '0'};
-  },
-  handleChange: function(event) {
-    this.setState({value: event.target.value});
-  },
   render: function() {
     return (
       <button type="button"
-	  onclick={this.handleChange}>
+	  onClick={this.props.onGenerateStepsClick}>
 	  Generate Steps
 	  </button>
     );
+  }
+});
+
+var BalancingSteps = React.createClass({
+  getInitialState: function() {
+    return {id: 'balancingSteps',
+			value: '0'};
+  },
+  calculatePortfolioStatistics() {
+		lastAbsoluteDifference = absoluteDifference;
+		// Calculate the amount of equity per ticker
+		userEquityPerTicker = [];
+		for (var i = 0; i < userUnitsForCalculations.length; i++) {
+			userEquityPerTicker.push(userUnitsForCalculations[i] * lastTradedPrices[i]);
+		}
+		// Calculate the total equity for all tickers
+		var totalEquity = 0;
+		for (var i = 0; i < userEquityPerTicker.length; i++) {
+			totalEquity = totalEquity + userEquityPerTicker[i];
+		}
+		// Calculate the proportion for each ticker of the total equity
+		userProportionsPerTicker = [];
+		for (var i = 0; i < userUnitsForCalculations.length; i++) {
+			userProportionsPerTicker.push(userEquityPerTicker[i] / totalEquity * 100);
+		}
+		// Find the ratio of suggested distribution vs user distribution
+		ratioSuggestedVsUser = [];
+		for (var i = 0; i < userUnitsForCalculations.length; i++) {
+			ratioSuggestedVsUser.push(userProportionsPerTicker[i] / suggestedPercentages[i] * 100);
+		}
+		// Find the average ratio of suggested distribution vs user distribution
+		averageRatioSuggestedVsUser = 0;
+		for (var i = 0; i < ratioSuggestedVsUser.length; i++) {
+			averageRatioSuggestedVsUser = averageRatioSuggestedVsUser + ratioSuggestedVsUser[i];
+		}
+		averageRatioSuggestedVsUser = averageRatioSuggestedVsUser / ratioSuggestedVsUser.length;
+  },
+  getPurchaseOrderForCash() {
+		while (absoluteDifference != 0) {
+			this.calculatePortfolioStatistics();
+			// Find the absolute difference between the current averageRatioSuggestedVsUser and 1
+			absoluteDifference = Math.abs(100 - averageRatioSuggestedVsUser);
+			// Set the last absolute difference to be the same if it has not been set before
+			if (lastAbsoluteDifferenceSet == false) {
+				lastAbsoluteDifference = absoluteDifference;
+				lastAbsoluteDifferenceSet = true;
+			}
+			// If we are now making the portfolio less balanced, undo the last purchase and break the loop; otherwise, keep going
+			if (absoluteDifference > lastAbsoluteDifference) {
+				purchaseOrder.pop();
+				break;
+			}
+			else {
+				// Find the ticker with the lowest ratio
+				var lowestRatioTickerIndex = 0;
+				var currentLowestValue = ratioSuggestedVsUser[0];
+				for (var i = 1; i < ratioSuggestedVsUser.length; i++) {
+					if (ratioSuggestedVsUser[i] < currentLowestValue) {
+						currentLowestValue = ratioSuggestedVsUser[i];
+						lowestRatioTickerIndex = i;
+					}
+				}
+				// Determine if we can purchase the ticker
+				if (lastTradedPrices[lowestRatioTickerIndex] > leftoverCash) {
+					stillUnbalancedAfterCashBalancing = true;
+					break;
+				}
+				else {
+					// Add the ticker index to the purchase order
+					purchaseOrder.push(lowestRatioTickerIndex);
+					// Add the ticker to the number of units
+					userUnitsForCalculations[lowestRatioTickerIndex] = userUnitsForCalculations[lowestRatioTickerIndex] + 1;
+					// Reduce the leftover cash by the price of the ticker to buy
+					leftoverCash = leftoverCash - lastTradedPrices[lowestRatioTickerIndex];
+				}
+			}
+		}
+  },
+  getPurchaseOrderForUnusedCash() {
+		while (leftoverCash > 0) {
+			this.calculatePortfolioStatistics();
+			// Find the ticker with the lowest ratio
+			var lowestRatioTickerIndex = 0;
+			var currentLowestValue = ratioSuggestedVsUser[0];
+			for (var i = 1; i < ratioSuggestedVsUser.length; i++) {
+				if (ratioSuggestedVsUser[i] < currentLowestValue) {
+					currentLowestValue = ratioSuggestedVsUser[i];
+					lowestRatioTickerIndex = i;
+				}
+			}
+			// Determine if we can purchase the ticker
+			if (lastTradedPrices[lowestRatioTickerIndex] > leftoverCash) {
+				break;
+			}
+			else {
+				// Add the ticker index to the purchase order
+				purchaseOrder.push(lowestRatioTickerIndex);
+				// Add the ticker to the number of units
+				userUnitsForCalculations[lowestRatioTickerIndex] = userUnitsForCalculations[lowestRatioTickerIndex] + 1;
+				// Reduce the leftover cash by the price of the ticker to buy
+				leftoverCash = leftoverCash - lastTradedPrices[lowestRatioTickerIndex];
+			}
+		}
+  },
+  getPurchaseOrderForSelling() {
+	var highestRatioTickerIndex = 0;
+	while (absoluteDifference != 0) {
+			this.calculatePortfolioStatistics();
+			// Find the absolute difference between the current averageRatioSuggestedVsUser and 1
+			absoluteDifference = Math.abs(100 - averageRatioSuggestedVsUser);
+			// Set the last absolute difference to be the same if it has not been set before
+			if (lastAbsoluteDifferenceSet == false) {
+				lastAbsoluteDifference = absoluteDifference;
+				lastAbsoluteDifferenceSet = true;
+			}
+			// If we are now making the portfolio less balanced, undo the last sell and break the loop; otherwise, keep going
+			if (absoluteDifference > lastAbsoluteDifference) {
+				sellOrder.pop();
+				earnedCash = earnedCash - lastTradedPrices[highestRatioTickerIndex];
+				break;
+			}
+			else {
+				// Find the ticker with the highest ratio
+				highestRatioTickerIndex = 0;
+				var currentHighestValue = ratioSuggestedVsUser[0];
+				for (var i = 1; i < ratioSuggestedVsUser.length; i++) {
+					if (ratioSuggestedVsUser[i] > currentHighestValue) {
+						currentHighestValue = ratioSuggestedVsUser[i];
+						highestRatioTickerIndex = i;
+					}
+				}
+				// Check if we have at least one unit to sell
+				if (userUnitsForCalculations[highestRatioTickerIndex] < 1) {
+					notEnoughCapitalToBalance = true;
+					break;
+				}
+				// Add the ticker index to the sell order
+				sellOrder.push(highestRatioTickerIndex);
+				// Add the ticker to the number of units
+				userUnitsForCalculations[highestRatioTickerIndex] = userUnitsForCalculations[highestRatioTickerIndex] - 1;
+				// Reduce the leftover cash by the price of the ticker to buy
+				earnedCash = earnedCash + lastTradedPrices[highestRatioTickerIndex];
+			}
+		}
+  },
+  render: function() {
+	  if (generateStepsButtonClicked == false) {
+		  return (<div></div>);
+	  }
+	  else {
+		userUnitsForCalculations = userUnits.slice(0);
+		leftoverCash = cashAmount;
+		var balanceWithCashIntrusctions = [];
+		var spendUnusedCashIntrustions = [];
+		var balanceBySellingAndBuyingInstructions = [];
+		balancedWithCash = false;
+		spentUnusedCash = false;
+		balancedBySellingAndBuying = false;
+		notEnoughCapitalToBalance = false;
+		var part1Header;
+		var part2Header;
+		var enoughCapitalToBalance;
+		// Generate the instructions for balancing with cash
+		purchaseOrder = [];
+		lastAbsoluteDifferenceSet = false;
+		this.getPurchaseOrderForCash();
+		var stepCount = 1;
+		var count = 0;
+		for (var i = 0; i < tickerNames.length; i++) {
+			count = 0;
+			// Count the number of times the index appears in the purchase order array
+			for (var j = 0; j < purchaseOrder.length; j++) {
+				if (purchaseOrder[j] == i)
+					count = count + 1;
+			}
+			// Add the HTML
+			if (count > 0) {
+				balancedWithCash = true;
+ 				balanceWithCashIntrusctions.push(<h5>{stepCount}. Buy {count} units of {tickerNames[i]}</h5>);
+				stepCount = stepCount + 1;
+			}
+		}
+		// Generate the instructions for spending unused cash
+		stepCount = 1;
+		if (leftoverCash > 0) {
+			purchaseOrder = [];
+			lastAbsoluteDifferenceSet = false;
+			this.getPurchaseOrderForUnusedCash();
+			for (var i = 0; i < tickerNames.length; i++) {
+				// Count the number of times the index appears in the purchase order array
+				count = 0;
+				for (var j = 0; j < purchaseOrder.length; j++) {
+					if (purchaseOrder[j] == i)
+						count = count + 1;
+				}
+				// Add the HTML
+				if (count > 0) {
+					stillUnbalancedAfterCashBalancing = false;
+					spentUnusedCash = true;
+					spendUnusedCashIntrustions.push(<h5>{stepCount}. Buy {count} units of {tickerNames[i]}</h5>);
+					stepCount = stepCount + 1;
+				}
+			}
+		}
+		// Generate the instructions for balacing by buying and selling
+		stepCount = 1;
+		if (stillUnbalancedAfterCashBalancing) {
+			// Sell units as long as it increases balance
+			sellOrder = [];
+			lastAbsoluteDifferenceSet = false;
+			earnedCash = 0;
+			this.getPurchaseOrderForSelling();
+			// Purchase units with cash earned by selling
+			purchaseOrder = [];
+			lastAbsoluteDifferenceSet = false;
+			leftoverCash = earnedCash;
+			this.getPurchaseOrderForUnusedCash();
+			for (var i = 0; i < tickerNames.length; i++) {
+				// Count the number of times the index appears in the purchase order array
+				// and subtract by the number of times it appears in the sell order array
+				count = 0;
+				for (var j = 0; j < purchaseOrder.length; j++) {
+					if (purchaseOrder[j] == i)
+						count = count + 1;
+				}
+				for (var j = 0; j < sellOrder.length; j++) {
+					if (sellOrder[j] == i)
+						count = count - 1;
+				}
+				// Add the HTML
+				if (count > 0) {
+					balancedBySellingAndBuying = true;
+					balanceBySellingAndBuyingInstructions.push(<h5>{stepCount}. Buy {count} units of {tickerNames[i]}</h5>);
+					stepCount = stepCount + 1;
+				}
+				else if (count < 0) {
+					balancedBySellingAndBuying = true;
+					balanceBySellingAndBuyingInstructions.push(<h5>{stepCount}. Sell {Math.abs(count)} units of {tickerNames[i]}</h5>);
+					stepCount = stepCount + 1;
+				}
+			}
+		}
+		// Add the HTML part headers
+		if (!balancedWithCash && !spentUnusedCash && !balancedBySellingAndBuying && !notEnoughCapitalToBalance) {
+			part1Header = <h4>Portfolio is already balanced.</h4>;
+		}
+		else if (!balancedWithCash && !spentUnusedCash && !balancedBySellingAndBuying && notEnoughCapitalToBalance) {
+			part1Header = <h4>Not enough capital to balance.</h4>;
+		}
+		else if (balancedWithCash && !spentUnusedCash && !balancedBySellingAndBuying) {
+			part1Header = <h4>Balance with cash:</h4>;
+		}
+		else if (balancedWithCash && !spentUnusedCash && !balancedBySellingAndBuying) {
+			part1Header = <h4>Spend unused cash:</h4>;
+		}
+		else if (!balancedWithCash && !spentUnusedCash && balancedBySellingAndBuying  && !notEnoughCapitalToBalance) {
+			part1Header = <h4>Balance by buying and selling:</h4>;
+		}
+		else if (!balancedWithCash && !spentUnusedCash && balancedBySellingAndBuying  && notEnoughCapitalToBalance) {
+			part1Header = <h4>Balance by buying and selling:</h4>;
+			enoughCapitalToBalance = <h5>Not enough capital to balance further.</h5>;
+		}
+		else if(balancedWithCash && spentUnusedCash && !balancedBySellingAndBuying) {
+			part1Header = <h4>Part 1: Balance with cash:</h4>;
+			part2Header = <h4>Part 2: Spend unused cash:</h4>;
+		}
+		else if (balancedWithCash && !spentUnusedCash && balancedBySellingAndBuying && !notEnoughCapitalToBalance) {
+			part1Header = <h4>Part 1: Balance with cash:</h4>;
+			part2Header = <h4>Part 2: Balance by buying and selling:</h4>;
+		}
+		else if (balancedWithCash && !spentUnusedCash && balancedBySellingAndBuying && notEnoughCapitalToBalance) {
+			part1Header = <h4>Part 1: Balance with cash:</h4>;
+			part2Header = <h4>Part 2: Balance by buying and selling:</h4>;
+			enoughCapitalToBalance = <h5>Not enough capital to balance further.</h5>;
+		}
+		
+		return (
+			<div>
+				<h3>Instructions List</h3>
+				{part1Header}
+				{balanceWithCashIntrusctions}
+				{part2Header}
+				{spendUnusedCashIntrustions}
+				{balanceBySellingAndBuyingInstructions}
+				{enoughCapitalToBalance}
+			</div>
+		);
+	  }
+	}
+});
+
+var Notification = React.createClass({
+	
+  _notificationSystem: null,
+  _addNotification: function(inNotificationMessage) {
+	var notification = {message: this.notificationMessage, level: 'error', position: 'bc'};
+	notification.message = inNotificationMessage;
+    this._notificationSystem.addNotification(notification);
+  },
+  getInitialState: function() {
+    return {notificationMessage: 'Notification message'};
+  },
+  componentDidMount: function() {
+    this._notificationSystem = this.refs.notificationSystem;
+  },
+  render: function() {
+    return (
+      <div>
+        <NotificationSystem ref="notificationSystem" />
+      </div>
+      );
   }
 });
