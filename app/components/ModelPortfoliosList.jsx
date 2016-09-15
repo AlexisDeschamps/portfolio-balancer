@@ -1,9 +1,8 @@
 global.jQuery = require('jquery');
 var React = require("react");
-var SchoolInfo = require("./SchoolInfo.jsx")
-var AddSchool = require("./AddSchool.jsx");
-var PortfolioModels = require("./PortfolioModels.jsx");
-var schoolService = require("../services/schoolService");
+var ModelPortfolioInfo = require("./ModelPortfolioInfo.jsx")
+var AddModelPortfolio = require("./AddModelPortfolio.jsx");
+var modelPortfolioService = require("../services/modelPortfolioService");
 var ReactDOM = require('react-dom');
 var NotificationSystem = require('react-notification-system');
 
@@ -75,7 +74,7 @@ module.exports = React.createClass({
 			display: "inline-block",
 		};
 	    // Modify the received data to create a displayable array   
-		var modelPortfolioData = this.props.schools;
+		var modelPortfolioData = this.props.modelPortfolios;
 		modelPortfoliosNames = [];
 		modelPortfoliosNames.push({value: 'defaultUnknown', name: 'Select...'});
 		for (i = 0; i < modelPortfolioData.length; i++) {

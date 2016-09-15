@@ -1,14 +1,14 @@
 var $ = require("jquery");
 var promise = require("es6-promise");
-var resourceUrl = "http://localhost:7777/api/models";
+var resourceUrl = "http://localhost:5000/api/modelPortfolios";
 
 module.exports = {
-    addModel: function (model) {
+    addModelPortfolio: function (modelPortfolio) {
         var Promise = promise.Promise;
         return new Promise(function (resolve, reject) {
             $.ajax({
                 url: resourceUrl,
-                data: JSON.stringify(model),
+                data: JSON.stringify(modelPortfolio),
                 method: "POST",
                 dataType: "json",
                 contentType: "application/json",
@@ -17,7 +17,7 @@ module.exports = {
             });
         });
     },
-    getModels: function () {
+    getModelPortfolios: function () {
         var Promise = promise.Promise;
         return new Promise(function (resolve, reject) {
             $.ajax({
@@ -29,11 +29,11 @@ module.exports = {
             });
         });
     },
-    deleteModel: function (model) {
+    deleteModelPortfolio: function (modelPortfolio) {
         var Promise = promise.Promise;
         return new Promise(function (resolve, reject) {
             $.ajax({
-                url: resourceUrl + "/" + model._id,
+                url: resourceUrl + "/" + modelPortfolio._id,
                 method: "DELETE",
                 dataType: "json",
                 success: resolve,

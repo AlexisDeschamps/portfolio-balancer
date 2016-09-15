@@ -1,16 +1,16 @@
 var React = require("react");
 var ReactDOM = require("react-dom");
-var schoolsStore = require("./stores/schoolsStore");
+var modelPortfoliosStore = require("./stores/modelPortfoliosStore");
 
-var _schools = [];
-var getSchoolsCallback = function(schools){
-    _schools = schools;
+var _modelPortfolios = [];
+var getModelPortfoliosCallback = function(modelPortfolios){
+    _modelPortfolios = modelPortfolios;
     render();
 };
-schoolsStore.onChange(getSchoolsCallback);
+modelPortfoliosStore.onChange(getModelPortfoliosCallback);
 
-var SchoolsList = require("./components/SchoolsList.jsx");
+var ModelPortfoliosList = require("./components/ModelPortfoliosList.jsx");
 
 function render(){
-    ReactDOM.render(<SchoolsList schools={_schools} />, document.getElementById("container"));    
+    ReactDOM.render(<ModelPortfoliosList modelPortfolios={_modelPortfolios} />, document.getElementById("container"));    
 }

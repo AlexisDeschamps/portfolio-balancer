@@ -1,5 +1,5 @@
 var mongoose = require("mongoose");
-var schoolSchema = mongoose.Schema({
+var modelPortfolioSchema = mongoose.Schema({
 	title: String,
 	source: String,
 	website: String,
@@ -10,6 +10,6 @@ var schoolSchema = mongoose.Schema({
 	}],
     name: String,
     tagline: String
-});
+}, { collection: 'modelPortfolios' });
 
-module.exports = mongoose.model("school", schoolSchema);
+module.exports = mongoose.model("modelPortfolio", modelPortfolioSchema);
