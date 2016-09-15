@@ -60,7 +60,7 @@ module.exports = React.createClass({
 		var url = 'https://query.yahooapis.com/v1/public/yql';
 			var data = encodeURIComponent("select * from yahoo.finance.quotes where symbol in ('" + symbol + "')");
 
-			return $.getJSON(url, 'q=' + data + "&format=json&diagnostics=true&env=https://datatables.org/alltables.env")
+			return $.getJSON(url, 'q=' + data + "&format=json&diagnostics=true&env=http://datatables.org/alltables.env")
 			.then(function (data) {
 				return {lastTradePrice: data.query.results.quote.LastTradePriceOnly}
 			})
