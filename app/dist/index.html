@@ -3,19 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <title>Portfolio Balancer</title>
-    <link href="bootstrap.min.css" rel="stylesheet" />
-    <link href="style.css" rel="stylesheet" />
+	<link href="http://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+	<link type="text/css" rel="stylesheet" href="css/materialize.min.css"  media="screen,projection"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	
+<style>
+.select-style {
+    border: 1px solid #26c6da ;
+    width: 120px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: #fafafa url("img/icon-select.png") no-repeat 90% 50%;
+}
+
+.select-style select {
+    padding: 5px 8px;
+    width: 130%;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    background-image: none;
+    -webkit-appearance: none;
+}
+
+.select-style select:focus {
+    outline: none;
+}
+</style>
 </head>
 
 <body>
-    <div >
-        <a href="#">Portfolio Balancer</a>
+	<nav>
+    <div class="nav-wrapper  cyan lighten-1">
+      <a href="#" class="brand-logo center cyan lighten-1" >Portfolio Balancer</a>
+      <ul id="nav-mobile" class="left hide-on-med-and-down  cyan lighten-1">
+      </ul>
     </div>
+  </nav>
 	<br></br>
 	<div id="popUp" class="container"></div>
-    <div align="center" id="container" class="container"></div>
+    <div align="left" id="container" class="container"></div>
     <script src="main.js"></script>
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+	<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+	<script type="text/javascript" src="js/materialize.min.js"></script>
 </body>
 
 </html>

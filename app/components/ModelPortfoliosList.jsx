@@ -69,6 +69,22 @@ module.exports = React.createClass({
 				console.log('Request failed: ' + err);}
 			);
     },
+	getLastTradedPrices() {
+		$.when.apply($, promises).then(function() {
+			lastTradedPrices = [];
+			for (var i = 0; i < arguments.length; i++) {
+					lastTradedPrices.push(parseFloat(arguments[i].lastTradePrice));
+			}
+			this.setState({gotLastTradedPrices: true});
+		}.bind(this));
+	},
+	initializeUserUnitsArray() {
+		userUnits = [];
+			for (var i = 0; i < tickerNames.length; i++) {
+				userUnits.push(0);
+			}
+		this.setState({initalizedUserUnitsArray: true});
+	},
    render: function() {
 		var inlineBlockDisplayStyle = {
 			display: "inline-block",
@@ -76,7 +92,7 @@ module.exports = React.createClass({
 	    // Modify the received data to create a displayable array   
 		var modelPortfolioData = this.props.modelPortfolios;
 		modelPortfoliosNames = [];
-		modelPortfoliosNames.push({value: 'defaultUnknown', name: 'Select...'});
+		modelPortfoliosNames.push({value: 'defaultUnknown', name: 'Select model portfolio...'});
 		for (i = 0; i < modelPortfolioData.length; i++) {
 			modelPortfoliosNames.push({value: modelPortfolioData[i]._id, name: modelPortfolioData[i].title});
 		}	
@@ -91,8 +107,7 @@ module.exports = React.createClass({
 		if (selectedModelPortfolio == null) {
 			 return(
 				<div className="portfolio-balancer">
-					<p>Choose model portfolio: </p>
-					<ModelPortfolioSelect onModelSelect= {this.onModelSelect}/>
+					<ModelPortfolioSelect id={"modelPortfolioSelect"} onModelSelect= {this.onModelSelect}/>
 				</div>				
 			)
 		}
@@ -100,48 +115,37 @@ module.exports = React.createClass({
 		else {
 			//Find the ticker names
 			tickerNames = [];
-			var tickers = selectedModelPortfolio.tickers;
-			for (var i = 0; i < tickers.length; i++) {
-				tickerNames.push(tickers[i].title);
+			var tickerData = selectedModelPortfolio.tickers;
+			for (var i = 0; i < tickerData.length; i++) {
+				tickerNames.push(tickerData[i].title);
 			}
 			//Find the suggested percentages
 			suggestedPercentages = [];
-			for (var i = 0; i < tickers.length; i++) {
-				suggestedPercentages.push(tickers[i].percent);
+			for (var i = 0; i < tickerData.length; i++) {
+				suggestedPercentages.push(tickerData[i].percent);
 			}
 			// Find the last traded prices
 			promises = [];
-			for (var i = 0; i < tickers.length; i++) {
-				promises.push(this.getLastTradedPrice(tickers[i].title));
+			for (var i = 0; i < tickerNames.length; i++) {
+				promises.push(this.getLastTradedPrice(tickerData[i].title));
 			}
 			// Create asynchronous jquery calls, the component will re-render once the data has been acquired if needed
 			if (this.state.gotLastTradedPrices == false) {
-				$.when.apply($, promises).then(function() {
-					lastTradedPrices = [];
-					for (var i = 0; i < arguments.length; i++) {
-						lastTradedPrices.push(parseFloat(arguments[i].lastTradePrice));
-					}
-					this.setState({gotLastTradedPrices: true});
-				}.bind(this));
+				this.getLastTradedPrices();
 			}
 			// Initalize the user units array with the right amount of entries if needed
 			if (this.state.initalizedUserUnitsArray == false) {
-				userUnits = [];
-				for (var i = 0; i < tickers.length; i++) {
-					userUnits.push(0);
-				}
-				this.setState({initalizedUserUnitsArray: true});
+				this.initializeUserUnitsArray();
 			}
 			return(
 			   <div className="portfolio-balancer">
 					<Notification ref={'popUp'}/>
-					<p>Choose model portfolio: </p>
-					<ModelPortfolioSelect onModelSelect= {this.onModelSelect}/> <br></br>
+					<ModelPortfolioSelect id={"modelPortfolioSelect"} onModelSelect= {this.onModelSelect}/> <br></br>
 					<br></br>
 					<TickersDataTable/>
 					<br></br>
 					<p style={inlineBlockDisplayStyle}>How much cash are you willing to invest?</p>
-					<UserInputText style={inlineBlockDisplayStyle} id= 'cashInputText'/> <br></br>
+					<UserInputText id= 'cashInputText'/> <br></br>
 					<br></br>
 					<UserInputButton id= 'generateStepsButton' onGenerateStepsClick= {this.onGenerateStepsClick}/>
 					<br></br>
@@ -165,14 +169,11 @@ var ModelPortfolioSelect = React.createClass({
 	this.props.onModelSelect(e.target.value);
   },
   render: function (props) {
-	 var style = {
-        display: "inline-block",
-      };
     var createItem = function (item, key) {
       return <option key={key} value={item.value}>{item.name}</option>;
     };
     return (
-        <select style={style} onChange={this.handleChange} value={this.state.value}>
+        <select className="browser-default" onChange={this.handleChange} value={this.state.value}>
           {this.state.options.map(createItem)}
         </select>
     );
@@ -183,22 +184,12 @@ var TickersDataTable = React.createClass({
   render: function () {
     return (
 		<table>
-			<tr>
-				<th>Ticker: </th>
+			<tbody>
 				<TickerNamesRow />
-			</tr>
-			<tr>
-				<th>Distribution: </th>
 				<SuggestedPercentagesRow />
-			</tr>
-			<tr>
-				<th>Current price:</th>
 				<LastTradedPricesRow />
-			</tr>
-			<tr>
-				<th>Current units:</th>
 				<UserUnitsRow />
-			</tr>
+			</tbody>
 		</table>
     );
   }
@@ -208,12 +199,13 @@ var TickerNamesRow = React.createClass({
 	render: function () {
 		var tickerNamesRow = [];
 		for (var i = 0; i < tickerNames.length; i++) {
-			tickerNamesRow.push(<td>{tickerNames[i]}</td>);
+			tickerNamesRow.push(<td key={'ticker' + tickerNames[i]}>{tickerNames[i]}</td>);
 		}
 		return (
-			<div>
-				{tickerNamesRow}
-			</div>
+			<tr>
+				<th>Ticker: </th>
+			{tickerNamesRow}
+			</tr>
 		);
 	}
 });
@@ -222,12 +214,13 @@ var SuggestedPercentagesRow = React.createClass({
 	render: function () {
 		var suggestedPercentagesRow = [];
 		for (var i = 0; i < suggestedPercentages.length; i++) {
-			suggestedPercentagesRow.push(<td>{suggestedPercentages[i]}%</td>);
+			suggestedPercentagesRow.push(<td key={'suggestedPercentage' + i}>{suggestedPercentages[i]}%</td>);
 		}
 		return (
-			<div>
+			<tr>
+				<th>Distribution: </th>
 				{suggestedPercentagesRow}
-			</div>
+			</tr>
 		);
 	}
 });
@@ -236,12 +229,13 @@ var LastTradedPricesRow = React.createClass({
 	render: function () {
 		var lastTradedPricesRow = [];
 		for (var i = 0; i < lastTradedPrices.length; i++) {
-			lastTradedPricesRow.push(<td>{lastTradedPrices[i]}</td>);
+			lastTradedPricesRow.push(<td key={'lastTradedPrice' + i}>{lastTradedPrices[i]}</td>);
 		}
 		return (
-			<div>
+			<tr>
+				<th>Current price:</th>
 				{lastTradedPricesRow}
-			</div>
+			</tr>
 		);
 	}
 });
@@ -250,12 +244,13 @@ var UserUnitsRow = React.createClass({
 	render: function () {
 		var userUnitsRow = [];
 		for (var i = 0; i < userUnits.length; i++) {
-				userUnitsRow.push(<td><UserInputText inputUnitsTextNumber = {i} /></td>);
+				userUnitsRow.push(<td key={'inputUserText' + i}><UserInputText inputUnitsTextNumber= {i}/></td>);
 		}
 		return (
-			<div>
+			<tr>
+				<th>Current units:</th>
 				{userUnitsRow}
-			</div>
+			</tr>
 		);
 	}
 });
@@ -280,30 +275,12 @@ var UserInputText = React.createClass({
   },
   render: function() {
     return (
+	<div class="input-field col s6">
       <input
         type="text"
         value={this.state.value}
-        onChange={this.handleChange}
-      />
-    );
-  }
-});
-
-var UserInputCheckbox = React.createClass({
-  getInitialState: function() {
-    return {id: 'defaultId',
-			value: '0'};
-  },
-  handleChange: function(event) {
-    this.setState({value: event.target.checked});
-  },
-  render: function() {
-    return (
-      <input
-        type="checkbox"
-        value={this.state.value}
-        onChange={this.props.onGenerateStepsClick}
-      />
+        onChange={this.handleChange} />
+		</div>
     );
   }
 });
@@ -311,9 +288,10 @@ var UserInputCheckbox = React.createClass({
 var UserInputButton = React.createClass({
   render: function() {
     return (
-      <button type="button"
+	  <button className="btn waves-effect waves-light cyan lighten-1" type="submit" name="action"
 	  onClick={this.props.onGenerateStepsClick}>
 	  Generate Steps
+	  <i className="material-icons right">send</i>
 	  </button>
     );
   }
@@ -431,35 +409,26 @@ var BalancingSteps = React.createClass({
 				lastAbsoluteDifference = absoluteDifference;
 				lastAbsoluteDifferenceSet = true;
 			}
-			// If we are now making the portfolio less balanced, undo the last sell and break the loop; otherwise, keep going
-			if (absoluteDifference > lastAbsoluteDifference) {
-				sellOrder.pop();
-				userUnitsForCalculations[highestRatioTickerIndex] = userUnitsForCalculations[highestRatioTickerIndex] + 1;
-				earnedCash = earnedCash - lastTradedPrices[highestRatioTickerIndex];
+			// Find the ticker with the highest ratio
+			highestRatioTickerIndex = 0;
+			var currentHighestValue = ratioSuggestedVsUser[0];
+			for (var i = 1; i < ratioSuggestedVsUser.length; i++) {
+				if (ratioSuggestedVsUser[i] > currentHighestValue) {
+					currentHighestValue = ratioSuggestedVsUser[i];
+						highestRatioTickerIndex = i;
+				}
+			}
+			// Check if we have at least one unit to sell
+			if (userUnitsForCalculations[highestRatioTickerIndex] < 1) {
+				notEnoughCapitalToBalance = true;
 				break;
 			}
-			else {
-				// Find the ticker with the highest ratio
-				highestRatioTickerIndex = 0;
-				var currentHighestValue = ratioSuggestedVsUser[0];
-				for (var i = 1; i < ratioSuggestedVsUser.length; i++) {
-					if (ratioSuggestedVsUser[i] > currentHighestValue) {
-						currentHighestValue = ratioSuggestedVsUser[i];
-						highestRatioTickerIndex = i;
-					}
-				}
-				// Check if we have at least one unit to sell
-				if (userUnitsForCalculations[highestRatioTickerIndex] < 1) {
-					notEnoughCapitalToBalance = true;
-					break;
-				}
-				// Add the ticker index to the sell order
-				sellOrder.push(highestRatioTickerIndex);
-				// Add the ticker to the number of units
-				userUnitsForCalculations[highestRatioTickerIndex] = userUnitsForCalculations[highestRatioTickerIndex] - 1;
-				// Reduce the leftover cash by the price of the ticker to buy
-				earnedCash = earnedCash + lastTradedPrices[highestRatioTickerIndex];
-			}
+			// Add the ticker index to the sell order
+			sellOrder.push(highestRatioTickerIndex);
+			// Add the ticker to the number of units
+			userUnitsForCalculations[highestRatioTickerIndex] = userUnitsForCalculations[highestRatioTickerIndex] - 1;
+			// Reduce the leftover cash by the price of the ticker to buy
+			earnedCash = earnedCash + lastTradedPrices[highestRatioTickerIndex];
 		}
   },
   render: function() {
@@ -495,7 +464,7 @@ var BalancingSteps = React.createClass({
 			// Add the HTML
 			if (count > 0) {
 				balancedWithCash = true;
- 				balanceWithCashIntrusctions.push(<h5>{stepCount}. Buy {count} unit{count != 1 ? 's' : ''} of {tickerNames[i]}</h5>);
+ 				balanceWithCashIntrusctions.push(<p key={'balanceWithCashIntrusctions-' + i}>{stepCount}. Buy {count} unit{count != 1 ? 's' : ''} of {tickerNames[i]}</p>);
 				stepCount = stepCount + 1;
 			}
 		}
@@ -516,7 +485,7 @@ var BalancingSteps = React.createClass({
 				if (count > 0) {
 					stillUnbalancedAfterCashBalancing = false;
 					spentUnusedCash = true;
-					spendUnusedCashIntrustions.push(<h5>{stepCount}. Buy {count} unit{count != 1 ? 's' : ''} of {tickerNames[i]}</h5>);
+					spendUnusedCashIntrustions.push(<p key={'spendUnusedCashIntrusctions-' + i}>{stepCount}. Buy {count} unit{count != 1 ? 's' : ''} of {tickerNames[i]}</p>);
 					stepCount = stepCount + 1;
 				}
 			}
@@ -549,53 +518,53 @@ var BalancingSteps = React.createClass({
 				// Add the HTML
 				if (count > 0) {
 					balancedBySellingAndBuying = true;
-					balanceBySellingAndBuyingInstructions.push(<h5>{stepCount}. Buy {count} unit{count != 1 ? 's' : ''} of {tickerNames[i]}</h5>);
+					balanceBySellingAndBuyingInstructions.push(<p key={'balanceByBuyingAndSellingInstructions-' + i}>{stepCount}. Buy {count} unit{count != 1 ? 's' : ''} of {tickerNames[i]}</p>);
 					stepCount = stepCount + 1;
 				}
 				else if (count < 0) {
 					balancedBySellingAndBuying = true;
-					balanceBySellingAndBuyingInstructions.push(<h5>{stepCount}. Sell {Math.abs(count)} unit{Math.abs(count) != 1 ? 's' : ''} of {tickerNames[i]}</h5>);
+					balanceBySellingAndBuyingInstructions.push(<p key={'balanceByBuyingAndSellingInstructions-' + i}>{stepCount}. Sell {Math.abs(count)} unit{Math.abs(count) != 1 ? 's' : ''} of {tickerNames[i]}</p>);
 					stepCount = stepCount + 1;
 				}
 			}
 		}
 		// Add the HTML part headers
 		if (!balancedWithCash && !spentUnusedCash && !balancedBySellingAndBuying && !notEnoughCapitalToBalance) {
-			part1Header = <h4>Portfolio is already balanced.</h4>;
+			part1Header = <p style={{fontWeight: 'bold'}}>Portfolio is already balanced.</p>;
 		}
 		else if (!balancedWithCash && !spentUnusedCash && !balancedBySellingAndBuying && notEnoughCapitalToBalance) {
-			part1Header = <h4>Not enough capital to balance.</h4>;
+			part1Header = <p style={{fontWeight: 'bold'}}>Not enough capital to balance.</p>;
 		}
 		else if (balancedWithCash && !spentUnusedCash && !balancedBySellingAndBuying) {
-			part1Header = <h4>Balance with cash</h4>;
+			part1Header = <p style={{fontWeight: 'bold'}}>Balance with cash</p>;
 		}
 		else if (balancedWithCash && !spentUnusedCash && !balancedBySellingAndBuying) {
-			part1Header = <h4>Spend unused cash</h4>;
+			part1Header = <p style={{fontWeight: 'bold'}}>Spend unused cash</p>;
 		}
 		else if (!balancedWithCash && !spentUnusedCash && balancedBySellingAndBuying  && !notEnoughCapitalToBalance) {
-			part1Header = <h4>Balance by buying and selling</h4>;
+			part1Header = <p style={{fontWeight: 'bold'}}>Balance by buying and selling</p>;
 		}
 		else if (!balancedWithCash && !spentUnusedCash && balancedBySellingAndBuying  && notEnoughCapitalToBalance) {
-			part1Header = <h4>Balance by buying and selling</h4>;
-			enoughCapitalToBalance = <h5>Not enough capital to balance further.</h5>;
+			part1Header = <p style={{fontWeight: 'bold'}}>Balance by buying and selling</p>;
+			enoughCapitalToBalance = <p style={{fontWeight: 'bold'}}>Not enough capital to balance further.</p>;
 		}
 		else if(balancedWithCash && spentUnusedCash && !balancedBySellingAndBuying) {
-			part1Header = <h4>Part 1: Balance with cash</h4>;
-			part2Header = <h4>Part 2: Spend unused cash</h4>;
+			part1Header = <p style={{fontWeight: 'bold'}}>Part 1: Balance with cash</p>;
+			part2Header = <p style={{fontWeight: 'bold'}}>Part 2: Spend unused cash</p>;
 		}
 		else if (balancedWithCash && !spentUnusedCash && balancedBySellingAndBuying && !notEnoughCapitalToBalance) {
-			part1Header = <h4>Part 1: Balance with cash</h4>;
-			part2Header = <h4>Part 2: Balance by buying and selling:</h4>;
+			part1Header = <p style={{fontWeight: 'bold'}}>Part 1: Balance with cash</p>;
+			part2Header = <p style={{fontWeight: 'bold'}}>Part 2: Balance by buying and selling:</p>;
 		}
 		else if (balancedWithCash && !spentUnusedCash && balancedBySellingAndBuying && notEnoughCapitalToBalance) {
-			part1Header = <h4>Part 1: Balance with cash</h4>;
-			part2Header = <h4>Part 2: Balance by buying and selling</h4>;
-			enoughCapitalToBalance = <h5>Not enough capital to balance further.</h5>;
+			part1Header = <p style={{fontWeight: 'bold'}}>Part 1: Balance with cash</p>;
+			part2Header = <p style={{fontWeight: 'bold'}}>Part 2: Balance by buying and selling</p>;
+			enoughCapitalToBalance = <p style={{fontWeight: 'bold'}}>Not enough capital to balance further.</p>;
 		}
 		
 		return (
 			<div>
-				<h3>Instructions List</h3>
+				<h5>Instructions List</h5>
 				{part1Header}
 				{balanceWithCashIntrusctions}
 				{part2Header}
