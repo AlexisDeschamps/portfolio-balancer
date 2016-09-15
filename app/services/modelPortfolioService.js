@@ -1,6 +1,6 @@
 var $ = require("jquery");
 var promise = require("es6-promise");
-var resourceUrl = "https://portfolio-balancer.herokuapp.com/api/modelPortfolios";
+var resourceUrl = "http://portfolio-balancer.herokuapp.com/api/modelPortfolios";
 
 module.exports = {
     addModelPortfolio: function (modelPortfolio) {
