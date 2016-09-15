@@ -14,11 +14,3 @@ var SchoolsList = require("./components/SchoolsList.jsx");
 function render(){
     ReactDOM.render(<SchoolsList schools={_schools} />, document.getElementById("container"));    
 }
-
-var modelsStore = require("./stores/modelsStore");
-var _models = [];
-var getModelsCallback = function(models){
-    _models = models;
-    render();
-};
-modelsStore.onChange(getModelsCallback);
