@@ -275,7 +275,7 @@ var UserInputText = React.createClass({
   },
   render: function() {
     return (
-	<div class="input-field col s6">
+	<div className="input-field col s6">
       <input
         type="text"
         value={this.state.value}
