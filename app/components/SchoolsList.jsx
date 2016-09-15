@@ -1,7 +1,5 @@
 global.jQuery = require('jquery');
 var React = require("react");
-React.Bootstrap = require('react-bootstrap');
-React.Bootstrap.Select = require('react-bootstrap-select');
 var SchoolInfo = require("./SchoolInfo.jsx")
 var AddSchool = require("./AddSchool.jsx");
 var PortfolioModels = require("./PortfolioModels.jsx");
@@ -73,6 +71,9 @@ module.exports = React.createClass({
 			);
     },
    render: function() {
+		var inlineBlockDisplayStyle = {
+			display: "inline-block",
+		};
 	    // Modify the received data to create a displayable array   
 		var modelPortfolioData = this.props.schools;
 		modelPortfoliosNames = [];
@@ -90,9 +91,9 @@ module.exports = React.createClass({
 		// Return display when no model is selected
 		if (selectedModelPortfolio == null) {
 			 return(
-				<div className="row">
+				<div className="portfolio-balancer">
 					<p>Choose model portfolio: </p>
-					<Select onModelSelect= {this.onModelSelect}/>
+					<ModelPortfolioSelect onModelSelect= {this.onModelSelect}/>
 				</div>				
 			)
 		}
@@ -133,26 +134,26 @@ module.exports = React.createClass({
 				this.setState({initalizedUserUnitsArray: true});
 			}
 			return(
-			   <div className="row">
+			   <div className="portfolio-balancer">
 					<Notification ref={'popUp'}/>
 					<p>Choose model portfolio: </p>
-						<Select onModelSelect= {this.onModelSelect}/>
-						<Table/>
-					<div className="user-options">
-						<p>How much cash are you willing to invest?</p>
-						<UserInputText id= 'cashInputText'/>
-						<UserInputButton id= 'generateStepsButton' onGenerateStepsClick= {this.onGenerateStepsClick}/>
-					</div>
-					<div>
-						<BalancingSteps />
-					</div>
+					<ModelPortfolioSelect onModelSelect= {this.onModelSelect}/> <br></br>
+					<br></br>
+					<TickersDataTable/>
+					<br></br>
+					<p style={inlineBlockDisplayStyle}>How much cash are you willing to invest?</p>
+					<UserInputText style={inlineBlockDisplayStyle} id= 'cashInputText'/> <br></br>
+					<br></br>
+					<UserInputButton id= 'generateStepsButton' onGenerateStepsClick= {this.onGenerateStepsClick}/>
+					<br></br>
+					<BalancingSteps />
 			   </div>
 		    )
 		}
     } 
 });
 
-var Select = React.createClass({
+var ModelPortfolioSelect = React.createClass({
   getInitialState: function () {
     return {
       value: 'defaultUnknown',
@@ -172,36 +173,34 @@ var Select = React.createClass({
       return <option key={key} value={item.value}>{item.name}</option>;
     };
     return (
-      <div>
         <select style={style} onChange={this.handleChange} value={this.state.value}>
           {this.state.options.map(createItem)}
         </select>
-      </div>
     );
   }
 });
 
-var Table = React.createClass({
+var TickersDataTable = React.createClass({
   render: function () {
     return (
-			<table>
-				<tr>
-					<th>Ticker: </th>
-					<TickerNamesRow />
-				</tr>
-				<tr>
-					<th>Distribution: </th>
-					<SuggestedPercentagesRow />
-				</tr>
-				<tr>
-					<th>Current price:</th>
-					<LastTradedPricesRow />
-				</tr>
-				<tr>
-					<th>Current units:</th>
-					<UserUnitsRow />
-				</tr>
-			</table>
+		<table>
+			<tr>
+				<th>Ticker: </th>
+				<TickerNamesRow />
+			</tr>
+			<tr>
+				<th>Distribution: </th>
+				<SuggestedPercentagesRow />
+			</tr>
+			<tr>
+				<th>Current price:</th>
+				<LastTradedPricesRow />
+			</tr>
+			<tr>
+				<th>Current units:</th>
+				<UserUnitsRow />
+			</tr>
+		</table>
     );
   }
 });
@@ -422,7 +421,7 @@ var BalancingSteps = React.createClass({
 			}
 		}
   },
-  getPurchaseOrderForSelling() {
+  getSellingOrder() {
 	var highestRatioTickerIndex = 0;
 	while (absoluteDifference != 0) {
 			this.calculatePortfolioStatistics();
@@ -436,6 +435,7 @@ var BalancingSteps = React.createClass({
 			// If we are now making the portfolio less balanced, undo the last sell and break the loop; otherwise, keep going
 			if (absoluteDifference > lastAbsoluteDifference) {
 				sellOrder.pop();
+				userUnitsForCalculations[highestRatioTickerIndex] = userUnitsForCalculations[highestRatioTickerIndex] + 1;
 				earnedCash = earnedCash - lastTradedPrices[highestRatioTickerIndex];
 				break;
 			}
@@ -496,7 +496,7 @@ var BalancingSteps = React.createClass({
 			// Add the HTML
 			if (count > 0) {
 				balancedWithCash = true;
- 				balanceWithCashIntrusctions.push(<h5>{stepCount}. Buy {count} units of {tickerNames[i]}</h5>);
+ 				balanceWithCashIntrusctions.push(<h5>{stepCount}. Buy {count} unit{count != 1 ? 's' : ''} of {tickerNames[i]}</h5>);
 				stepCount = stepCount + 1;
 			}
 		}
@@ -517,7 +517,7 @@ var BalancingSteps = React.createClass({
 				if (count > 0) {
 					stillUnbalancedAfterCashBalancing = false;
 					spentUnusedCash = true;
-					spendUnusedCashIntrustions.push(<h5>{stepCount}. Buy {count} units of {tickerNames[i]}</h5>);
+					spendUnusedCashIntrustions.push(<h5>{stepCount}. Buy {count} unit{count != 1 ? 's' : ''} of {tickerNames[i]}</h5>);
 					stepCount = stepCount + 1;
 				}
 			}
@@ -529,7 +529,7 @@ var BalancingSteps = React.createClass({
 			sellOrder = [];
 			lastAbsoluteDifferenceSet = false;
 			earnedCash = 0;
-			this.getPurchaseOrderForSelling();
+			this.getSellingOrder();
 			// Purchase units with cash earned by selling
 			purchaseOrder = [];
 			lastAbsoluteDifferenceSet = false;
@@ -550,12 +550,12 @@ var BalancingSteps = React.createClass({
 				// Add the HTML
 				if (count > 0) {
 					balancedBySellingAndBuying = true;
-					balanceBySellingAndBuyingInstructions.push(<h5>{stepCount}. Buy {count} units of {tickerNames[i]}</h5>);
+					balanceBySellingAndBuyingInstructions.push(<h5>{stepCount}. Buy {count} unit{count != 1 ? 's' : ''} of {tickerNames[i]}</h5>);
 					stepCount = stepCount + 1;
 				}
 				else if (count < 0) {
 					balancedBySellingAndBuying = true;
-					balanceBySellingAndBuyingInstructions.push(<h5>{stepCount}. Sell {Math.abs(count)} units of {tickerNames[i]}</h5>);
+					balanceBySellingAndBuyingInstructions.push(<h5>{stepCount}. Sell {Math.abs(count)} unit{Math.abs(count) != 1 ? 's' : ''} of {tickerNames[i]}</h5>);
 					stepCount = stepCount + 1;
 				}
 			}
@@ -568,29 +568,29 @@ var BalancingSteps = React.createClass({
 			part1Header = <h4>Not enough capital to balance.</h4>;
 		}
 		else if (balancedWithCash && !spentUnusedCash && !balancedBySellingAndBuying) {
-			part1Header = <h4>Balance with cash:</h4>;
+			part1Header = <h4>Balance with cash</h4>;
 		}
 		else if (balancedWithCash && !spentUnusedCash && !balancedBySellingAndBuying) {
-			part1Header = <h4>Spend unused cash:</h4>;
+			part1Header = <h4>Spend unused cash</h4>;
 		}
 		else if (!balancedWithCash && !spentUnusedCash && balancedBySellingAndBuying  && !notEnoughCapitalToBalance) {
-			part1Header = <h4>Balance by buying and selling:</h4>;
+			part1Header = <h4>Balance by buying and selling</h4>;
 		}
 		else if (!balancedWithCash && !spentUnusedCash && balancedBySellingAndBuying  && notEnoughCapitalToBalance) {
-			part1Header = <h4>Balance by buying and selling:</h4>;
+			part1Header = <h4>Balance by buying and selling</h4>;
 			enoughCapitalToBalance = <h5>Not enough capital to balance further.</h5>;
 		}
 		else if(balancedWithCash && spentUnusedCash && !balancedBySellingAndBuying) {
-			part1Header = <h4>Part 1: Balance with cash:</h4>;
-			part2Header = <h4>Part 2: Spend unused cash:</h4>;
+			part1Header = <h4>Part 1: Balance with cash</h4>;
+			part2Header = <h4>Part 2: Spend unused cash</h4>;
 		}
 		else if (balancedWithCash && !spentUnusedCash && balancedBySellingAndBuying && !notEnoughCapitalToBalance) {
-			part1Header = <h4>Part 1: Balance with cash:</h4>;
+			part1Header = <h4>Part 1: Balance with cash</h4>;
 			part2Header = <h4>Part 2: Balance by buying and selling:</h4>;
 		}
 		else if (balancedWithCash && !spentUnusedCash && balancedBySellingAndBuying && notEnoughCapitalToBalance) {
-			part1Header = <h4>Part 1: Balance with cash:</h4>;
-			part2Header = <h4>Part 2: Balance by buying and selling:</h4>;
+			part1Header = <h4>Part 1: Balance with cash</h4>;
+			part2Header = <h4>Part 2: Balance by buying and selling</h4>;
 			enoughCapitalToBalance = <h5>Not enough capital to balance further.</h5>;
 		}
 		
