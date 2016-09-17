@@ -367,7 +367,7 @@ var TickersDataTable = React.createClass({
 		<br></br>
 		<div style={{display: 'flex', justifyContent: 'center'}}>
 			<btn className="btn-floating btn-small waves-effect waves-light cyan lighten-1"
-				onClick={this.onAddTickerClick}>
+				onClick={this.onDeleteTickerClick.bind(this)}>
 				<i className="material-icons">add</i>
 			</btn>
 		</div>
