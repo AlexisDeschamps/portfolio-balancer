@@ -102,16 +102,17 @@ module.exports = React.createClass({
 				return;
 			} 
 		}
+		var totalDistribution = 0;
 		// Verify total distributionvar totalDistribution = 0;
 		for (var i = 0; i < suggestedPercentages.length; i++) {
-			var totalDistribution = totalDistribution + suggestedPercentages[i];
+			totalDistribution = totalDistribution + suggestedPercentages[i];
 		}
-		if (totalDistribution < 99 | totalDistribution > 101) {
+		if (totalDistribution < 99.9 | totalDistribution > 100.1) {
 			this.refs.popUp._addNotification("Please insert distributions that total up to a 100%.");
 			return;
 		}
 		// Verify the cash amount
-		if (!(cashAmount > 0)) {
+		if (!(cashAmount >= 0)) {
 			this.refs.popUp._addNotification("Pleases insert a valid cash amount.");
 			return;
 		}
@@ -334,15 +335,15 @@ var TickersDataTable = React.createClass({
 			tickerPrice = <UserInputText key={'userInputPrice' + i} id={'userInputPrice'} index={i} value={'...'}/>;
 		}
 		tableBody.push(
-			<tr>
-				<td>{tickerName}</td>
-				<td>{suggestedPercentage}</td>
-				<td>{tickerPrice}</td>
-				<td><UserInputText id={'userInputUnits'} index={i} placeholder={'0'}/></td>
-				<td>
+			<tr key={'tr' + i}>
+				<td key={'tickerNameTD' + i}>{tickerName}</td>
+				<td key={'suggestedPercentageTD' + i}>{suggestedPercentage}</td>
+				<td key={'ticekrPriceTD' + i}>{tickerPrice}</td>
+				<td key={'userUnitsTD' + i}><UserInputText key={'userInputUnits' + i} id={'userInputUnits'} index={i} placeholder={'0'}/></td>
+				<td key={'deleteIconTD' + i}>
 					<btn key={'deleteTickerButton' + i} className="btn-floating right btn-small waves-effect waves-light cyan lighten-1"
-						onClick={this.onDeleteTickerClick.bind(null, i)}>
-						<i className="material-icons">remove</i>
+						onClick={this.onDeleteTickerClick.bind(this, i)}>
+						<i key={'deleteIcon' + i} className="material-icons">remove</i>
 					</btn>
 				</td>
 			</tr>
@@ -366,7 +367,7 @@ var TickersDataTable = React.createClass({
 		<br></br>
 		<div style={{display: 'flex', justifyContent: 'center'}}>
 			<btn className="btn-floating btn-small waves-effect waves-light cyan lighten-1"
-				onClick={this.onAddTickerClick.bind(null)}>
+				onClick={this.onAddTickerClick}>
 				<i className="material-icons">add</i>
 			</btn>
 		</div>
@@ -499,6 +500,8 @@ var BalancingSteps = React.createClass({
 			// If we are now making the portfolio less balanced, undo the last purchase and break the loop; otherwise, keep going
 			if (absoluteDifference > lastAbsoluteDifference) {
 				purchaseOrder.pop();
+				userUnitsForCalculations[lowestRatioTickerIndex] = userUnitsForCalculations[lowestRatioTickerIndex] - 1;
+				leftoverCash = leftoverCash + lastTradedPrices[lowestRatioTickerIndex];
 				break;
 			}
 			else {
