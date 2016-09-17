@@ -21,5 +21,3 @@ var usernameValue = process.env.USERNAME;
 var passwordValue = process.env.PASSWORD;
 var mongooseConnect = "mongodb://" + usernameValue + ":" + passwordValue + "@ds147905.mlab.com:47905/portfolio-balancer";
 mongoose.connect(mongooseConnect);
-
-//mongoose.connect("mongodb://AlexisDeschamps:Alexmongolab4082!@ds147905.mlab.com:47905/portfolio-balancer");
