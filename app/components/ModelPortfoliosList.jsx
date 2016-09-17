@@ -718,8 +718,7 @@ var BalancingSteps = React.createClass({
 			part1Header = <p style={{fontWeight: 'bold'}}>Part 1: Balance with cash</p>;
 			part2Header = <p style={{fontWeight: 'bold'}}>Part 2: Balance by buying and selling</p>;
 			enoughCapitalToBalance = <p style={{fontWeight: 'bold'}}>Not enough capital to balance further.</p>;
-		}
-		
+		}	
 		return (
 			<div>
 				<h5>Instructions List</h5>
