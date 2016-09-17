@@ -216,8 +216,8 @@ var TickersDataTable = React.createClass({
 	componentWillMount() {
 		if (selectedId == 'custom')
 			this.onCustomClick();
-		else if (selectedId != 'defaultUnknown' || selectedId != null)
-			this.onCustomClick();
+		else if (selectedId != 'defaultUnknown' && selectedId != null)
+			this.onModelSelect();
 	},
 	onModelSelect: function() {
 		var tickerData = selectedModelPortfolio.tickers;
