@@ -50,6 +50,7 @@ module.exports = React.createClass({
 		};
 	},
 	onModelSelect: function() {
+		generateStepsButtonClicked = false;
 		// Find the selected object
 		if (selectedId == 'defaultUnknown') {
 			selectedModelPortfolio = null;
@@ -58,6 +59,7 @@ module.exports = React.createClass({
 			suggestedPercentages = [];
 			lastTradedPrices = [];
 			userUnits = [];
+			this.setState({});
 		}
 		else {
 			for (var i = 0; i < modelPortfolioData.length; i++) {
@@ -72,6 +74,7 @@ module.exports = React.createClass({
 		}
     },
 	onCreateCustomClick: function() {
+		generateStepsButtonClicked = false;
 		selectedId = 'custom';
 		this.setState({});
 		if (this.refs.tickerDataTable != null) {
@@ -133,7 +136,7 @@ module.exports = React.createClass({
 			 return(
 				<div className="row valign-wrapper">
 						<div className="col s9">
-							<ModelPortfolioSelect id="modelPortfolioSelect" onModelSelect= {this.onModelSelect}/>
+							<ModelPortfolioSelect id="modelPortfolioSelect" onModelSelect={this.onModelSelect}/>
 						</div>
 						<div className="col s3">
 							<UserInputButton id='customModelPortfolioButton' onCreateCustomClick={this.onCreateCustomClick }/>
@@ -148,7 +151,7 @@ module.exports = React.createClass({
 					<Notification ref={'popUp'}/>								
 					<div className="row valign-wrapper">
 						<div className="col s9">
-							<ModelPortfolioSelect id="modelPortfolioSelect" onModelSelect= {this.onModelSelect}/>
+							<ModelPortfolioSelect id="modelPortfolioSelect" onModelSelect={this.onModelSelect}/>
 						</div>
 						<div className="col s3">
 							<UserInputButton id='customModelPortfolioButton' onCreateCustomClick={this.onCreateCustomClick }/>
@@ -198,11 +201,6 @@ var ModelPortfolioSelect = React.createClass({
 });
 
 var TickersDataTable = React.createClass({
-	getInitialState: function () {
-		return {
-			gotLastTradedPrices: false
-		};
-	},
 	onDeleteTickerClick: function(index) {
 		tickerNames.splice(index, 1);
 		suggestedPercentages.splice(index, 1);
@@ -243,18 +241,16 @@ var TickersDataTable = React.createClass({
 		}
 		// Find the last traded prices
 		lastTradedPrices = [];
+		// Initalize with dummy values
+		for (var i = 0; i < tickerNames.length; i++) {
+			lastTradedPrices.push(0);
+		}
 		promises = [];
 		for (var i = 0; i < tickerNames.length; i++) {
 			promises.push(this.getLastTradedPrice(tickerData[i].title));
 		}
 		// Create asynchronous jquery calls, the component will re-render once the data has been acquired if needed
-		if (this.state.gotLastTradedPrices == false) {
-			// Initalize with dummy values
-			for (var i = 0; i < tickerNames.length; i++) {
-				lastTradedPrices.push(0);
-			}
-			this.getLastTradedPrices();
-		}
+		this.getLastTradedPrices();
 		// Initalize the user units array with the right amount of entries
 		userUnits = [];
 		for (var i = 0; i < tickerNames.length; i++) {
@@ -287,26 +283,25 @@ var TickersDataTable = React.createClass({
 	},
 	getLastTradedPrice: function(symbol) {
 		var url = 'https://query.yahooapis.com/v1/public/yql';
-			var data = encodeURIComponent("select * from yahoo.finance.quotes where symbol in ('" + symbol + "')");
-
-			return $.getJSON(url, 'q=' + data + "&format=json&diagnostics=true&env=http://datatables.org/alltables.env")
-			.then(function (data) {
-				if (data.query.results != null) 
-					return {lastTradePrice: data.query.results.quote.LastTradePriceOnly}
-				else
-					return -1;
-			})
-			.fail(function (jqxhr, textStatus, error) {
-				var err = textStatus + ", " + error;
-				console.log('Request failed: ' + err);}
-			);
+		var data = encodeURIComponent("select * from yahoo.finance.quotes where symbol in ('" + symbol + "')");
+		return $.getJSON(url, 'q=' + data + "&format=json&diagnostics=true&env=http://datatables.org/alltables.env")
+		.then(function (data) {
+			if (data.query.results != null) 
+				return {lastTradePrice: data.query.results.quote.LastTradePriceOnly}
+			else
+				return -1;
+		})
+		.fail(function (jqxhr, textStatus, error) {
+			var err = textStatus + ", " + error;
+			console.log('Request failed: ' + err);}
+		);
     },
 	getLastTradedPrices() {
 		$.when.apply($, promises).then(function() {
 			for (var i = 0; i < arguments.length; i++) {
 					lastTradedPrices[i] = (parseFloat(arguments[i].lastTradePrice));
 			}
-			this.setState({gotLastTradedPrices: true});
+			this.setState({});
 		}.bind(this));
 	},
   render: function () {
