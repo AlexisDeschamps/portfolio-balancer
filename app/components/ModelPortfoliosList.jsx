@@ -198,12 +198,6 @@ var ModelPortfolioSelect = React.createClass({
 });
 
 var TickersDataTable = React.createClass({
-	getInitialState: function () {
-		return {
-			gotLastTradedPrices: false,
-			initalizedUserUnitsArray: false
-		};
-	},
 	onDeleteTickerClick: function(index) {
 		tickerNames.splice(index, 1);
 		suggestedPercentages.splice(index, 1);
@@ -249,16 +243,15 @@ var TickersDataTable = React.createClass({
 			promises.push(this.getLastTradedPrice(tickerData[i].title));
 		}
 		// Create asynchronous jquery calls, the component will re-render once the data has been acquired if needed
-		if (this.state.gotLastTradedPrices == false) {
-			// Initalize with dummy values
-			for (var i = 0; i < tickerNames.length; i++) {
-				lastTradedPrices.push(0);
-			}
-			this.getLastTradedPrices();
+		// Initalize with dummy values
+		for (var i = 0; i < tickerNames.length; i++) {
+			lastTradedPrices.push(0);
 		}
-		// Initalize the user units array with the right amount of entries if needed
-		if (this.state.initalizedUserUnitsArray == false) {
-			this.initializeUserUnitsArray();
+		this.getLastTradedPrices();
+		// Initalize the user units array with the right amount of entries
+		userUnits = [];
+		for (var i = 0; i < tickerNames.length; i++) {
+			userUnits.push(0);
 		}
 		this.setState({});
     },
@@ -308,13 +301,6 @@ var TickersDataTable = React.createClass({
 			}
 			this.setState({gotLastTradedPrices: true});
 		}.bind(this));
-	},
-	initializeUserUnitsArray() {
-		userUnits = [];
-			for (var i = 0; i < tickerNames.length; i++) {
-				userUnits.push(0);
-			}
-		this.setState({initalizedUserUnitsArray: true});
 	},
   render: function () {
 	var tableBody = [];
