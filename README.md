@@ -1,4 +1,4 @@
-# portfolio-balancer
+# Portfolio Balancer
 LINK: https://portfolio-balancer.herokuapp.com/
 
 Portfolio Balancer is an application that automatically determines how to rebalance the user's stock portfolio using real-time Yahoo Finance data.
