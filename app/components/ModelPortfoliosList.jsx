@@ -53,6 +53,11 @@ module.exports = React.createClass({
 		// Find the selected object
 		if (selectedId == 'defaultUnknown') {
 			selectedModelPortfolio = null;
+			tickerIsCustom = [];
+			tickerNames = [];
+			suggestedPercentages = [];
+			lastTradedPrices = [];
+			userUnits = [];
 		}
 		else {
 			for (var i = 0; i < modelPortfolioData.length; i++) {
@@ -238,6 +243,7 @@ var TickersDataTable = React.createClass({
 			suggestedPercentages.push(tickerData[i].percent);
 		}
 		// Find the last traded prices
+		lastTradedPrices = [];
 		promises = [];
 		for (var i = 0; i < tickerNames.length; i++) {
 			promises.push(this.getLastTradedPrice(tickerData[i].title));
