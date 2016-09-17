@@ -6,18 +6,21 @@ var modelPortfolioService = require("../services/modelPortfolioService");
 var ReactDOM = require('react-dom');
 var NotificationSystem = require('react-notification-system');
 
+var modelPortfolioData;
 var selectedId;
+var selectedModelPortfolio;
 var modelPortfoliosNames = [];
+var tickerIsCustom = [];
 var tickerNames = [];
 var suggestedPercentages = [];
 var lastTradedPrices = [];
 var userUnits = [];
 var userUnitsForCalculations = [];
+var generateStepsButtonClicked = false;
 
 var cashAmount = 0;
 var leftoverCash;
 var earnedCash;
-var generateStepsButtonClicked = false;
 
 var userEquityPerTicker = [];
 var userProportionsPerTicker = [];
@@ -32,123 +35,131 @@ var lastAbsoluteDifferenceSet = false;
 var stillUnbalancedAfterCashBalancing = false;
 
 module.exports = React.createClass({
+	componentWillMount: function() {
+		modelPortfolioData = this.props.modelPortfolios;
+		modelPortfoliosNames = [];
+		modelPortfoliosNames.push({value: 'defaultUnknown', name: 'Select model portfolio...'});
+		for (i = 0; i < modelPortfolioData.length; i++) {
+			modelPortfoliosNames.push({value: modelPortfolioData[i]._id, name: modelPortfolioData[i].title});
+		}
+	},
 	getInitialState: function () {
 		return {
-			gotLastTradedPrices: false,
 			generateStepsClicked: false,
-			initalizedUserUnitsArray: false
+			customPortfolioClicked: false
 		};
 	},
-	onModelSelect: function(value) {
-		this.setState({value: value});
+	onModelSelect: function() {
+		// Find the selected object
+		if (selectedId == 'defaultUnknown') {
+			selectedModelPortfolio = null;
+		}
+		else {
+			for (var i = 0; i < modelPortfolioData.length; i++) {
+				if (modelPortfolioData[i]._id == selectedId) {
+					selectedModelPortfolio = modelPortfolioData[i];
+				}
+			}
+		}
+		this.setState({});
+		if (this.refs.tickerDataTable != null) {
+			this.refs.tickerDataTable.onModelSelect();
+		}
     },
+	onCreateCustomClick: function() {
+		selectedId = 'custom';
+		this.setState({});
+		if (this.refs.tickerDataTable != null) {
+			this.refs.tickerDataTable.onCustomClick();
+		}
+	},
 	onGenerateStepsClick: function() {
+		// Verify names
+		for (var i = 0; i < tickerNames.length; i++) {
+			if (!tickerNames[i]) {
+				this.refs.popUp._addNotification("Please insert a valid ticker for row " + (i + 1) + ".");
+				return;
+			} 
+		}
+		// Verify distributions
+		for (var i = 0; i < suggestedPercentages.length; i++) {
+			if (!(suggestedPercentages[i] > 0)) {
+				this.refs.popUp._addNotification("Please insert a valid distribution percentage for ticker " + tickerNames[i] + ".");
+				return;
+			} 
+		}
+		// Verify prices
+		for (var i = 0; i < lastTradedPrices.length; i++) {
+			if (!(lastTradedPrices[i] > 0)) {
+				this.refs.popUp._addNotification("Please either insert a valid ticker or a custom price for ticker " + tickerNames[i] + ".");
+				return;
+			} 
+		}
+		// Verify units
 		for (var i = 0; i < userUnits.length; i++) {
-			if (isNaN(userUnits[i]) || userUnits[i] < 0) {
+			if (!(userUnits[i] >= 0)) {
 				this.refs.popUp._addNotification("Pleases insert a valid number of units for ticker " + tickerNames[i] + ".");
 				return;
 			} 
 		}
-		if (isNaN(cashAmount) || cashAmount < 0) {
+		// Verify total distributionvar totalDistribution = 0;
+		for (var i = 0; i < suggestedPercentages.length; i++) {
+			var totalDistribution = totalDistribution + suggestedPercentages[i];
+		}
+		if (totalDistribution < 99 | totalDistribution > 101) {
+			this.refs.popUp._addNotification("Please insert distributions that total up to a 100%.");
+			return;
+		}
+		// Verify the cash amount
+		if (!(cashAmount > 0)) {
 			this.refs.popUp._addNotification("Pleases insert a valid cash amount.");
 			return;
 		}
 		this.setState({generateStepsClicked: true});
 		generateStepsButtonClicked = true;
 	},
-	getLastTradedPrice: function(symbol) {
-		var url = 'https://query.yahooapis.com/v1/public/yql';
-			var data = encodeURIComponent("select * from yahoo.finance.quotes where symbol in ('" + symbol + "')");
-
-			return $.getJSON(url, 'q=' + data + "&format=json&diagnostics=true&env=http://datatables.org/alltables.env")
-			.then(function (data) {
-				return {lastTradePrice: data.query.results.quote.LastTradePriceOnly}
-			})
-			.fail(function (jqxhr, textStatus, error) {
-				var err = textStatus + ", " + error;
-				console.log('Request failed: ' + err);}
-			);
-    },
-	getLastTradedPrices() {
-		$.when.apply($, promises).then(function() {
-			lastTradedPrices = [];
-			for (var i = 0; i < arguments.length; i++) {
-					lastTradedPrices.push(parseFloat(arguments[i].lastTradePrice));
-			}
-			this.setState({gotLastTradedPrices: true});
-		}.bind(this));
-	},
-	initializeUserUnitsArray() {
-		userUnits = [];
-			for (var i = 0; i < tickerNames.length; i++) {
-				userUnits.push(0);
-			}
-		this.setState({initalizedUserUnitsArray: true});
+	onCustomPortfolioClick: function() {
+		this.setState({customPortfolioClicked: true});
 	},
    render: function() {
-		var inlineBlockDisplayStyle = {
-			display: "inline-block",
-		};
-	    // Modify the received data to create a displayable array   
-		var modelPortfolioData = this.props.modelPortfolios;
-		modelPortfoliosNames = [];
-		modelPortfoliosNames.push({value: 'defaultUnknown', name: 'Select model portfolio...'});
-		for (i = 0; i < modelPortfolioData.length; i++) {
-			modelPortfoliosNames.push({value: modelPortfolioData[i]._id, name: modelPortfolioData[i].title});
-		}	
-		// Find the selected object
-		var selectedModelPortfolio;
-		for (var i = 0; i < modelPortfolioData.length; i++) {
-			if (modelPortfolioData[i]._id == selectedId) {
-				selectedModelPortfolio = modelPortfolioData[i];
-			}
-		}
 		// Return display when no model is selected
-		if (selectedModelPortfolio == null) {
+		if (selectedId == null || selectedId == 'defaultUnknown') {
 			 return(
-				<div className="portfolio-balancer">
-					<ModelPortfolioSelect id={"modelPortfolioSelect"} onModelSelect= {this.onModelSelect}/>
+				<div className="row valign-wrapper">
+						<div className="col s9">
+							<ModelPortfolioSelect id="modelPortfolioSelect" onModelSelect= {this.onModelSelect}/>
+						</div>
+						<div className="col s3">
+							<UserInputButton id='customModelPortfolioButton' onCreateCustomClick={this.onCreateCustomClick }/>
+						</div>
 				</div>				
 			)
 		}
 		// Return display when a model is selected
 		else {
-			//Find the ticker names
-			tickerNames = [];
-			var tickerData = selectedModelPortfolio.tickers;
-			for (var i = 0; i < tickerData.length; i++) {
-				tickerNames.push(tickerData[i].title);
-			}
-			//Find the suggested percentages
-			suggestedPercentages = [];
-			for (var i = 0; i < tickerData.length; i++) {
-				suggestedPercentages.push(tickerData[i].percent);
-			}
-			// Find the last traded prices
-			promises = [];
-			for (var i = 0; i < tickerNames.length; i++) {
-				promises.push(this.getLastTradedPrice(tickerData[i].title));
-			}
-			// Create asynchronous jquery calls, the component will re-render once the data has been acquired if needed
-			if (this.state.gotLastTradedPrices == false) {
-				this.getLastTradedPrices();
-			}
-			// Initalize the user units array with the right amount of entries if needed
-			if (this.state.initalizedUserUnitsArray == false) {
-				this.initializeUserUnitsArray();
-			}
 			return(
-			   <div className="portfolio-balancer">
-					<Notification ref={'popUp'}/>
-					<ModelPortfolioSelect id={"modelPortfolioSelect"} onModelSelect= {this.onModelSelect}/> <br></br>
+			   <div>
+					<Notification ref={'popUp'}/>								
+					<div className="row valign-wrapper">
+						<div className="col s9">
+							<ModelPortfolioSelect id="modelPortfolioSelect" onModelSelect= {this.onModelSelect}/>
+						</div>
+						<div className="col s3">
+							<UserInputButton id='customModelPortfolioButton' onCreateCustomClick={this.onCreateCustomClick }/>
+						</div>
+					</div>				
+					<TickersDataTable ref={'tickerDataTable'}/>
 					<br></br>
-					<TickersDataTable/>
 					<br></br>
-					<p style={inlineBlockDisplayStyle}>How much cash are you willing to invest?</p>
-					<UserInputText id= 'cashInputText'/> <br></br>
-					<br></br>
-					<UserInputButton id= 'generateStepsButton' onGenerateStepsClick= {this.onGenerateStepsClick}/>
-					<br></br>
+					<div className="row valign-wrapper">
+						<div className="col s5">					
+							<p>How much cash are you willing to invest?</p>
+						</div>						
+						<div className="col s7">		
+							<UserInputText key='cashInputText' id= 'cashInputText' placeholder={0}/>
+						</div>		
+					</div>
+					<UserInputButton id= 'generateStepsButton' onGenerateStepsClick={this.onGenerateStepsClick}/>
 					<BalancingSteps />
 			   </div>
 		    )
@@ -166,14 +177,14 @@ var ModelPortfolioSelect = React.createClass({
   handleChange: function (e) {
     this.state.value = e.target.value;
 	selectedId = e.target.value;
-	this.props.onModelSelect(e.target.value);
+	this.props.onModelSelect();
   },
   render: function (props) {
     var createItem = function (item, key) {
       return <option key={key} value={item.value}>{item.name}</option>;
     };
     return (
-        <select className="browser-default" onChange={this.handleChange} value={this.state.value}>
+        <select className="browser-default" onChange={this.handleChange} value={selectedId}>
           {this.state.options.map(createItem)}
         </select>
     );
@@ -181,120 +192,264 @@ var ModelPortfolioSelect = React.createClass({
 });
 
 var TickersDataTable = React.createClass({
+	getInitialState: function () {
+		return {
+			gotLastTradedPrices: false,
+			initalizedUserUnitsArray: false
+		};
+	},
+	onDeleteTickerClick: function(index) {
+		tickerNames.splice(index, 1);
+		suggestedPercentages.splice(index, 1);
+		lastTradedPrices.splice(index, 1);
+		userUnits.splice(index, 1);
+		this.setState({});
+	},
+	onAddTickerClick: function() {
+		tickerIsCustom.push(true);
+		tickerNames.push('');
+		suggestedPercentages.push(0);
+		lastTradedPrices.push(-1);
+		userUnits.push(0);
+		this.setState({});
+	},
+	componentWillMount() {
+		if (selectedId == 'custom')
+			this.onCustomClick();
+		else if (selectedId != 'defaultUnknown' || selectedId != null)
+			this.onCustomClick();
+	},
+	onModelSelect: function() {
+		var tickerData = selectedModelPortfolio.tickers;
+		// Set ticker types
+		tickerIsCustom = [];
+		for (var i = 0; i < tickerData.length; i++) {
+			tickerIsCustom.push(false);
+		}
+		//Find the ticker names
+		tickerNames = [];
+		for (var i = 0; i < tickerData.length; i++) {
+			tickerNames.push(tickerData[i].title);
+		}
+		//Find the suggested percentages
+		suggestedPercentages = [];
+		for (var i = 0; i < tickerData.length; i++) {
+			suggestedPercentages.push(tickerData[i].percent);
+		}
+		// Find the last traded prices
+		promises = [];
+		for (var i = 0; i < tickerNames.length; i++) {
+			promises.push(this.getLastTradedPrice(tickerData[i].title));
+		}
+		// Create asynchronous jquery calls, the component will re-render once the data has been acquired if needed
+		if (this.state.gotLastTradedPrices == false) {
+			// Initalize with dummy values
+			for (var i = 0; i < tickerNames.length; i++) {
+				lastTradedPrices.push(0);
+			}
+			this.getLastTradedPrices();
+		}
+		// Initalize the user units array with the right amount of entries if needed
+		if (this.state.initalizedUserUnitsArray == false) {
+			this.initializeUserUnitsArray();
+		}
+		this.setState({});
+    },
+	onCustomClick: function() {
+		tickerIsCustom = [];
+		tickerNames = [];
+		suggestedPercentages = [];
+		lastTradedPrices = [];
+		userUnits = [];
+		this.onAddTickerClick();
+	},
+	getTickerPrice: function (index) {
+		// Find the last traded prices
+		promise = [];
+		promise.push(this.getLastTradedPrice(tickerNames[index]));
+		$.when.apply($, promise).then(function() {
+			for (var i = 0; i < arguments.length; i++) {
+					var tickerPrice = parseFloat(arguments[i].lastTradePrice);
+					if (tickerPrice)
+						lastTradedPrices[index] = (parseFloat(arguments[i].lastTradePrice));
+					else
+						lastTradedPrices[index] = -1;
+			}
+			this.setState({gotLastTradedPrices: true});
+		}.bind(this));
+	},
+	getLastTradedPrice: function(symbol) {
+		var url = 'https://query.yahooapis.com/v1/public/yql';
+			var data = encodeURIComponent("select * from yahoo.finance.quotes where symbol in ('" + symbol + "')");
+
+			return $.getJSON(url, 'q=' + data + "&format=json&diagnostics=true&env=http://datatables.org/alltables.env")
+			.then(function (data) {
+				if (data.query.results != null) 
+					return {lastTradePrice: data.query.results.quote.LastTradePriceOnly}
+				else
+					return -1;
+			})
+			.fail(function (jqxhr, textStatus, error) {
+				var err = textStatus + ", " + error;
+				console.log('Request failed: ' + err);}
+			);
+    },
+	getLastTradedPrices() {
+		$.when.apply($, promises).then(function() {
+			for (var i = 0; i < arguments.length; i++) {
+					lastTradedPrices[i] = (parseFloat(arguments[i].lastTradePrice));
+			}
+			this.setState({gotLastTradedPrices: true});
+		}.bind(this));
+	},
+	initializeUserUnitsArray() {
+		userUnits = [];
+			for (var i = 0; i < tickerNames.length; i++) {
+				userUnits.push(0);
+			}
+		this.setState({initalizedUserUnitsArray: true});
+	},
   render: function () {
+	var tableBody = [];
+	for (var i = 0; i < tickerNames.length; i++) {
+		var tickerName;
+		if (tickerIsCustom[i] == false) {
+			tickerName = <UserInputText key={'userInputTickerName' + i} id={'userInputTickerName'} index={i} placeholder={'Ticker Name'} value={tickerNames[i]} getTickerPrice={this.getTickerPrice}/>
+		}
+		else {
+			tickerName = <UserInputText key={'userInputTickerName' + i} id={'userInputTickerName'} index={i} placeholder={'Ticker Name'} value={tickerNames[i]} getTickerPrice={this.getTickerPrice}/>
+		}
+		var suggestedPercentage;
+		if (tickerIsCustom[i] == false) {
+			suggestedPercentage = <UserInputText key={'userInputSuggestedPercentage' + i} id={'userInputSuggestedPercentage'} index={i} value={suggestedPercentages[i]}/>
+		}
+		else {
+			suggestedPercentage = <UserInputText key={'userInputSuggestedPercentage' + i} id={'userInputSuggestedPercentage'} index={i} placeholder={'0'} value={suggestedPercentages[i]}/>
+		}
+		var tickerPrice;
+		if (lastTradedPrices[i] != -1) {
+			tickerPrice = <UserInputText key={'userInputPrice' + i} id={'userInputPrice'} index={i} value={lastTradedPrices[i]}/>
+		}
+		else {
+			tickerPrice = <UserInputText key={'userInputPrice' + i} id={'userInputPrice'} index={i} value={'...'}/>;
+		}
+		tableBody.push(
+			<tr>
+				<td>{tickerName}</td>
+				<td>{suggestedPercentage}</td>
+				<td>{tickerPrice}</td>
+				<td><UserInputText id={'userInputUnits'} index={i} placeholder={'0'}/></td>
+				<td>
+					<btn key={'deleteTickerButton' + i} className="btn-floating right btn-small waves-effect waves-light cyan lighten-1"
+						onClick={this.onDeleteTickerClick.bind(null, i)}>
+						<i className="material-icons">remove</i>
+					</btn>
+				</td>
+			</tr>
+		);
+	}
     return (
+	<div>
 		<table>
+			<thead>
+				<tr>
+					<th data-field="Ticker">Ticker</th>
+					<th data-field="Distribution">Distribution (%)</th>
+					<th data-field="Price">Price ($)</th>
+					<th data-field="Units">Units</th>
+				</tr>
+			</thead>
 			<tbody>
-				<TickerNamesRow />
-				<SuggestedPercentagesRow />
-				<LastTradedPricesRow />
-				<UserUnitsRow />
+				{tableBody}
 			</tbody>
 		</table>
+		<br></br>
+		<div style={{display: 'flex', justifyContent: 'center'}}>
+			<btn className="btn-floating btn-small waves-effect waves-light cyan lighten-1"
+				onClick={this.onAddTickerClick.bind(null)}>
+				<i className="material-icons">add</i>
+			</btn>
+		</div>
+	</div>
     );
   }
-});
-
-var TickerNamesRow = React.createClass({
-	render: function () {
-		var tickerNamesRow = [];
-		for (var i = 0; i < tickerNames.length; i++) {
-			tickerNamesRow.push(<td key={'ticker' + tickerNames[i]}>{tickerNames[i]}</td>);
-		}
-		return (
-			<tr>
-				<th>Ticker: </th>
-			{tickerNamesRow}
-			</tr>
-		);
-	}
-});
-
-var SuggestedPercentagesRow = React.createClass({
-	render: function () {
-		var suggestedPercentagesRow = [];
-		for (var i = 0; i < suggestedPercentages.length; i++) {
-			suggestedPercentagesRow.push(<td key={'suggestedPercentage' + i}>{suggestedPercentages[i]}%</td>);
-		}
-		return (
-			<tr>
-				<th>Distribution: </th>
-				{suggestedPercentagesRow}
-			</tr>
-		);
-	}
-});
-
-var LastTradedPricesRow = React.createClass({
-	render: function () {
-		var lastTradedPricesRow = [];
-		for (var i = 0; i < lastTradedPrices.length; i++) {
-			lastTradedPricesRow.push(<td key={'lastTradedPrice' + i}>{lastTradedPrices[i]}</td>);
-		}
-		return (
-			<tr>
-				<th>Current price:</th>
-				{lastTradedPricesRow}
-			</tr>
-		);
-	}
-});
-
-var UserUnitsRow = React.createClass({
-	render: function () {
-		var userUnitsRow = [];
-		for (var i = 0; i < userUnits.length; i++) {
-				userUnitsRow.push(<td key={'inputUserText' + i}><UserInputText inputUnitsTextNumber= {i}/></td>);
-		}
-		return (
-			<tr>
-				<th>Current units:</th>
-				{userUnitsRow}
-			</tr>
-		);
-	}
 });
 
 var UserInputText = React.createClass({
 	getInitialState: function() {
     return {id: 'defaultId',
-			inputUnitsTextNumber: '-1',
+			index: '-1',
+			placeholder: 'Default hint',
 			value: '0'};
   },
    componentWillMount: function() {
-	this.setState({id: this.props.id, inputUnitsTextNumber: this.props.inputUnitsTextNumber});
+	this.setState({id: this.props.id,
+					index: this.props.index,
+					placeholder: this.props.placeholder,
+					value: this.props.value
+				});
   },
+  componentWillReceiveProps: function(nextProps) {
+    this.setState({id: nextProps.id,
+					index: nextProps.index,
+					placeholder: nextProps.placeholder,
+					value: nextProps.value
+				});
+	},
   handleChange: function(event) {
     this.setState({value: event.target.value});
 	if (this.state.id == 'cashInputText') {
 		cashAmount = parseFloat(event.target.value);
 	}
-	else {
-		userUnits[this.state.inputUnitsTextNumber] = parseInt(event.target.value);
+	else if (this.state.id == 'userInputTickerName') {
+		tickerNames[this.state.index] = event.target.value;
+		this.props.getTickerPrice(this.state.index);
+	}
+	else if (this.state.id == 'userInputSuggestedPercentage') {
+		suggestedPercentages[this.state.index] = parseFloat(event.target.value);
+	}
+	else if (this.state.id == 'userInputPrice') {
+		lastTradedPrices[this.state.index] = parseFloat(event.target.value);
+	}
+	else if (this.state.id == 'userInputUnits') {
+		userUnits[this.state.index] = parseInt(event.target.value);
 	}
   },
   render: function() {
     return (
-	<div className="input-field col s6">
-      <input
-        type="text"
-        value={this.state.value}
-        onChange={this.handleChange} />
-		</div>
-    );
-  }
+		<input
+			type="text"
+			placeholder={this.state.placeholder}
+			value={this.state.value}
+			onChange={this.handleChange} />
+		);
+	}
 });
 
 var UserInputButton = React.createClass({
-  render: function() {
-    return (
-	  <button className="btn waves-effect waves-light cyan lighten-1" type="submit" name="action"
-	  onClick={this.props.onGenerateStepsClick}>
-	  Generate Steps
-	  <i className="material-icons right">send</i>
-	  </button>
-    );
-  }
+	componentWillMount() {
+		this.setState({id: this.props.id});
+	},
+	render: function() {
+		if (this.state.id == 'generateStepsButton') {
+			return (
+						<button className="btn waves-effect waves-light cyan lighten-1" type="submit" name="action"
+							onClick={this.props.onGenerateStepsClick}>
+							Generate Steps
+							<i className="material-icons right">send</i>
+						</button>
+			);
+		}
+		else if (this.state.id == 'customModelPortfolioButton') {
+			return (
+					<button className="btn waves-effect waves-light cyan lighten-1" type="submit" name="action"
+						onClick={this.props.onCreateCustomClick}>
+						<i className="material-icons right">create</i>
+						Custom
+					</button>
+			);
+		}
+	}
 });
 
 var BalancingSteps = React.createClass({
