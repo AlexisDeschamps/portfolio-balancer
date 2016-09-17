@@ -198,6 +198,11 @@ var ModelPortfolioSelect = React.createClass({
 });
 
 var TickersDataTable = React.createClass({
+	getInitialState: function () {
+		return {
+			gotLastTradedPrices: false
+		};
+	},
 	onDeleteTickerClick: function(index) {
 		tickerNames.splice(index, 1);
 		suggestedPercentages.splice(index, 1);
@@ -243,11 +248,13 @@ var TickersDataTable = React.createClass({
 			promises.push(this.getLastTradedPrice(tickerData[i].title));
 		}
 		// Create asynchronous jquery calls, the component will re-render once the data has been acquired if needed
-		// Initalize with dummy values
-		for (var i = 0; i < tickerNames.length; i++) {
-			lastTradedPrices.push(0);
+		if (this.state.gotLastTradedPrices == false) {
+			// Initalize with dummy values
+			for (var i = 0; i < tickerNames.length; i++) {
+				lastTradedPrices.push(0);
+			}
+			this.getLastTradedPrices();
 		}
-		this.getLastTradedPrices();
 		// Initalize the user units array with the right amount of entries
 		userUnits = [];
 		for (var i = 0; i < tickerNames.length; i++) {
