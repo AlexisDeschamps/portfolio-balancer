@@ -20,4 +20,4 @@ app.listen(port, function () {
 var username = process.env.username;
 var password = process.env.password;
 var mongooseConnect = "mongodb//" + username + ":" + password + "@ds147905.mlab.com:47905/portfolio-balancer";
-mongoose.connect(mongooseConnect);
+mongoose.connect("mongodb://AlexisDeschamps:Alexmongolab4082!@ds147905.mlab.com:47905/portfolio-balancer");
