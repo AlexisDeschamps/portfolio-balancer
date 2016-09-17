@@ -38,10 +38,15 @@ module.exports = React.createClass({
 	componentWillMount: function() {
 		modelPortfolioData = this.props.modelPortfolios;
 		modelPortfoliosNames = [];
-		modelPortfoliosNames.push({value: 'defaultUnknown', name: 'Select model portfolio...'});
 		for (i = 0; i < modelPortfolioData.length; i++) {
 			modelPortfoliosNames.push({value: modelPortfolioData[i]._id, name: modelPortfolioData[i].title});
 		}
+		modelPortfoliosNames.sort(function(a, b) {
+			var textA = a.name.toUpperCase();
+			var textB = b.name.toUpperCase();
+			return (textA < textB) ? -1 : (textA > textB) ? 1 : 0;
+		});
+		modelPortfoliosNames.unshift({value: 'defaultUnknown', name: 'Select model portfolio...'});
 	},
 	getInitialState: function () {
 		return {
