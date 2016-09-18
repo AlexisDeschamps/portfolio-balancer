@@ -6,4 +6,4 @@ A number of model portfolios are available for quick access.
 
 The application uses Node.js, React, Express, MongoDB and Mongoose.
 
-<img src="http://i.imgur.com/bLteikX.png" alt="Portfolio Balancer">
+<img src="http://imgur.com/P68RteP" alt="Portfolio Balancer">
