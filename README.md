@@ -1,4 +1,4 @@
-Note: This project has been replaced by https://github.com/AlexisDeschamps/portfolio-rebalancer.
+# This project has been replaced by https://github.com/AlexisDeschamps/portfolio-rebalancer.
 
 # Portfolio Balancer
 https://portfolio-balancer.herokuapp.com/
